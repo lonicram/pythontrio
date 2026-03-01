@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pythontrio_db
+    environment:
+      POSTGRES_USER: pythontrio
+      POSTGRES_PASSWORD: pythontrio
+      POSTGRES_DB: pythontrio
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
