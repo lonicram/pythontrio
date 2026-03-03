@@ -91,6 +91,34 @@ Once the server is running, you can access:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Welcome message |
-| GET | `/items` | List all items |
-| GET | `/items/{id}` | Get item by ID |
-| POST | `/items` | Create new item |
+| GET | `/health` | Health check |
+| GET | `/assets` | List all assets |
+| GET | `/assets/{id}` | Get asset by ID |
+| POST | `/assets` | Create new asset |
+| DELETE | `/assets/{id}` | Delete asset |
+| GET | `/portfolios` | List all portfolios |
+| GET | `/portfolios/{id}` | Get portfolio by ID |
+| POST | `/portfolios` | Create new portfolio |
+| DELETE | `/portfolios/{id}` | Delete portfolio |
+
+## Project Structure
+
+```
+app/
+├── main.py              # FastAPI app entry point
+├── config.py            # App configuration
+├── database.py          # Database engine and session
+├── schemas.py           # Pydantic request/response schemas
+├── models/              # SQLAlchemy ORM models
+│   ├── __init__.py
+│   ├── asset.py
+│   └── portfolio.py
+└── routers/             # API route handlers
+    ├── __init__.py
+    ├── assets.py
+    └── portfolios.py
+alembic/
+├── env.py               # Alembic environment config
+├── script.py.mako       # Migration template
+└── versions/            # Migration files
+```
