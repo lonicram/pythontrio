@@ -1,12 +1,10 @@
 from logging.config import fileConfig
 
-from sqlalchemy import pool
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, pool
 
+import app.models  # noqa
 from alembic import context
-
 from app.config import settings
-import app.models
 from app.database import Base
 
 # this is the Alembic Config object, which provides
@@ -56,9 +54,7 @@ def run_migrations_online() -> None:
     connectable = create_engine(settings.database_url, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

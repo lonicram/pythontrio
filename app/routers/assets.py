@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app import schemas
 from app.database import get_db
 from app.models import Asset
-from app import schemas
 
 router = APIRouter(
     prefix="/assets",
@@ -29,9 +29,7 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)) -> Asset:
 
 
 @router.post("/", response_model=schemas.AssetResponse, status_code=201)
-def create_asset(
-    asset: schemas.AssetCreate, db: Session = Depends(get_db)
-) -> Asset:
+def create_asset(asset: schemas.AssetCreate, db: Session = Depends(get_db)) -> Asset:
     """Create a new asset."""
     db_asset = Asset(**asset.model_dump())
     db.add(db_asset)

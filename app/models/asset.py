@@ -1,6 +1,6 @@
 """Asset model."""
 
-from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey
+from sqlalchemy import DECIMAL, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base

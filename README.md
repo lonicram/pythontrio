@@ -46,6 +46,42 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+For development (includes linting/formatting tools):
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+## Code Quality
+
+This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting.
+
+```bash
+# Check for linting issues
+ruff check app/
+
+# Auto-fix linting issues
+ruff check app/ --fix
+
+# Format code
+ruff format app/
+
+# Check formatting without making changes
+ruff format app/ --check
+```
+
+### Pre-commit Hooks
+
+Ruff runs automatically on every commit via pre-commit:
+
+```bash
+# Install the git hooks (one-time setup)
+pre-commit install
+
+# Run manually on all files
+pre-commit run --all-files
+```
+
 ## Database Setup
 
 ### Start PostgreSQL with Docker
