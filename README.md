@@ -97,12 +97,32 @@ This starts a PostgreSQL container with:
 - **User:** pythontrio
 - **Password:** pythontrio
 
-### Run Migrations
-
-Apply Alembic migrations to set up the database schema:
+### Alembic Migrations
 
 ```bash
+# Apply all migrations
 alembic upgrade head
+
+# Create a new migration (auto-generate from model changes)
+alembic revision --autogenerate -m "description of changes"
+
+# Create an empty migration (for manual edits)
+alembic revision -m "description of changes"
+
+# Downgrade one migration
+alembic downgrade -1
+
+# Downgrade to a specific revision
+alembic downgrade <revision_id>
+
+# Show current revision
+alembic current
+
+# Show migration history
+alembic history
+
+# Show SQL without executing (dry run)
+alembic upgrade head --sql
 ```
 
 ## Running the FastAPI Server
