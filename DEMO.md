@@ -13,7 +13,7 @@
     docker compose up -d db
     ```
 3) Create endpoints. Start server.
-   1) Add BTC A.
+   1) From swagger add single asset e.g. BTC and a portfolio.
 4) Provide changes in model. 
    1) add Asset.code property.
    2) add Asset.created_at property and Portfolio.created_at.
