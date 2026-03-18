@@ -1,0 +1,15 @@
+services:
+  db_live_demo:
+    image: postgres:16-alpine
+    container_name: pythontrio_db_live_demo
+    environment:
+      POSTGRES_USER: pythontrio
+      POSTGRES_PASSWORD: pythontrio
+      POSTGRES_DB: pythontrio_live
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_live:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_live:
