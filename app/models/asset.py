@@ -22,3 +22,9 @@ class Asset(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     portfolio = relationship("Portfolio", back_populates="assets")
+    price_history = relationship(
+        "AssetPriceHistory",
+        back_populates="asset",
+        order_by="desc(AssetPriceHistory.recorded_at)",
+        passive_deletes=True,
+    )

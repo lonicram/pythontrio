@@ -7,6 +7,7 @@ This allows Alembic to discover all models with a single import:
 """
 
 from app.models.asset import Asset
+from app.models.asset_price_history import AssetPriceHistory
 from app.models.portfolio import Portfolio
 
-__all__ = ["Asset", "Portfolio"]
+__all__ = ["Asset", "AssetPriceHistory", "Portfolio"]

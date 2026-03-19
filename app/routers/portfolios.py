@@ -21,10 +21,23 @@ def list_portfolios(db: Session = Depends(get_db)) -> list[Portfolio]:
 
 @router.get("/{portfolio_id}", response_model=schemas.PortfolioResponse)
 def get_portfolio(portfolio_id: int, db: Session = Depends(get_db)) -> Portfolio:
-    """Retrieve a single portfolio by ID."""
-    portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).one()
+    """Retrieve a single portfolio by ID.
+
+    Args:
+        portfolio_id: The ID of the portfolio to retrieve.
+        db: Database session.
+
+    Returns:
+        The portfolio with the specified ID.
+
+    Raises:
+        HTTPException: 404 if portfolio not found.
+    """
+    portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:
-        raise HTTPException(status_code=404, detail="Portfolio not found")
+        raise HTTPException(
+            status_code=404, detail=f"Portfolio with id {portfolio_id} not found"
+        )
     return portfolio
 
 

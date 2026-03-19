@@ -1,6 +1,9 @@
-# Development dependencies
 -r requirements.txt
 
+# Testing dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0
+
 # Linting and formatting
-ruff>=0.4.0
-pre-commit>=3.7.0
+ruff>=0.1.0
