@@ -11,6 +11,7 @@ router = APIRouter(prefix="/assets", tags=["assets"])
 class AssetCreate(BaseModel):
     name: str
     description: str | None = None
+    price: float | None = None
     portfolio_id: int
 
 
@@ -18,7 +19,10 @@ class AssetResponse(BaseModel):
     id: int
     name: str
     description: str | None
+    price: float | None
     portfolio_id: int
+
+    added: str = 'Demo'
 
     model_config = {"from_attributes": True}
 

@@ -3,12 +3,13 @@
 from fastapi import FastAPI
 
 from app.config import settings
-from app.routers import assets, portfolios
+from app.routers import asset_prices, assets, portfolios
 
 app = FastAPI(title=settings.app_name)
 
 app.include_router(portfolios.router)
 app.include_router(assets.router)
+app.include_router(asset_prices.router)
 
 @app.get("/")
 def root() -> dict[str, str]:

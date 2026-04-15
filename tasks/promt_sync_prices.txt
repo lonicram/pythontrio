@@ -1,0 +1,4 @@
+Create a standalone Python script that fetches current prices for all assets registered
+in the system and updates them via the existing API.
+The script will use free public APIs (CoinGecko for crypto, Yahoo Finance for stocks)
+and is designed to run with "schedule" python library each 10 minutes.
