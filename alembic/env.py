@@ -1,6 +1,6 @@
 from logging.config import fileConfig
 
-from sqlalchemy import create_engine, pool
+from sqlalchemy import create_engine, event, pool, text
 
 import app.models  # noqa
 from alembic import context
@@ -19,6 +19,23 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 target_metadata = Base.metadata
+
+
+def _engine_connect_args() -> dict:
+    if settings.database_url.startswith("sqlite"):
+        return {"check_same_thread": False}
+    return {}
+
+
+def _configure_context(connection) -> None:
+    """Configure Alembic context with dialect-specific options."""
+    if connection.dialect.name == "sqlite":
+        connection.execute(text("PRAGMA foreign_keys=ON"))
+
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+    )
 
 
 def run_migrations_offline() -> None:
@@ -51,10 +68,22 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = create_engine(settings.database_url, poolclass=pool.NullPool)
+    connectable = create_engine(
+        settings.database_url,
+        poolclass=pool.NullPool,
+        connect_args=_engine_connect_args(),
+    )
 
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+    if settings.database_url.startswith("sqlite"):
+
+        @event.listens_for(connectable, "connect")
+        def _set_sqlite_pragma(dbapi_conn, connection_record) -> None:  # noqa: ARG001
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+    with connectable.begin() as connection:
+        _configure_context(connection)
 
         with context.begin_transaction():
             context.run_migrations()
