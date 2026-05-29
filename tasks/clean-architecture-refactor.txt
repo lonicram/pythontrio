@@ -1,0 +1,13 @@
+- better to implement tests first
+
+Phase 1: Clean Architecture
+  - Extract schemas from routers to app/schemas/
+  - Create repository layer in app/repositories/
+  - Create service layer in app/services/
+  - Add dependency injection via app/dependencies.py
+
+Phase 2: Testing
+  - pytest setup with fixtures
+  - Test database (SQLite in-memory)
+  - Integration tests for all endpoints
+  - Unit tests for services with mocked repos

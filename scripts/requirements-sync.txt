@@ -1,0 +1,11 @@
+# Requirements for sync_prices.py script
+# Install with: pip install -r scripts/requirements-sync.txt
+
+# HTTP client for API calls and CoinGecko
+requests>=2.31.0
+
+# Yahoo Finance stock price fetcher
+yfinance>=0.2.36
+
+# Job scheduling library
+schedule>=1.2.0
