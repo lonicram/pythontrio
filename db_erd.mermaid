@@ -1,0 +1,43 @@
+erDiagram
+    ASSET ||--o{ ASSET_PRICE : "has price history (CASCADE)"
+    ASSET ||--o{ PORTFOLIO_HOLDING : "held in (RESTRICT)"
+    PORTFOLIO ||--o{ PORTFOLIO_HOLDING : "contains (CASCADE)"
+
+    ASSET {
+        int id PK
+        string symbol UK "ticker, indexed"
+        string name
+        string asset_type "crypto/stock/etf/commodity"
+        string description "nullable"
+        decimal price "Numeric(18,8), current price, nullable"
+        datetime created_at
+        datetime updated_at "nullable"
+    }
+
+    ASSET_PRICE {
+        int id PK
+        int asset_id FK "indexed, ON DELETE CASCADE"
+        decimal price "Numeric(18,8)"
+        datetime recorded_at "indexed"
+        string source "nullable"
+        datetime created_at
+    }
+
+    PORTFOLIO {
+        int id PK
+        string name
+        string description "nullable"
+        datetime created_at
+        datetime updated_at "nullable"
+    }
+
+    PORTFOLIO_HOLDING {
+        int id PK
+        int portfolio_id FK "ON DELETE CASCADE"
+        int asset_id FK "ON DELETE RESTRICT"
+        decimal quantity "Numeric(18,8)"
+        decimal purchase_price "nullable"
+        datetime purchased_at "nullable"
+        datetime created_at
+        datetime updated_at "nullable"
+    }

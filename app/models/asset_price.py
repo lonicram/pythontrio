@@ -1,11 +1,16 @@
 """AssetPrice model for storing historical asset price data."""
 
 from datetime import datetime
+from decimal import Decimal
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Float, ForeignKey, Index, Integer, String, func
+from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.asset import Asset
 
 
 class AssetPrice(Base):
@@ -21,7 +26,7 @@ class AssetPrice(Base):
     asset_id: Mapped[int] = mapped_column(
         ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    price: Mapped[float] = mapped_column(Float, nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(nullable=False, index=True)
     source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -29,7 +34,7 @@ class AssetPrice(Base):
     )
 
     # Relationship to Asset
-    asset = relationship("Asset", back_populates="prices")
+    asset: Mapped["Asset"] = relationship(back_populates="prices")
 
     # Composite index for efficient time-range queries
     __table_args__ = (

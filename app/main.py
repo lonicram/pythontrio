@@ -3,12 +3,13 @@
 from fastapi import FastAPI
 
 from app.config import settings
-from app.routers import asset_prices, assets, portfolios
+from app.routers import asset_prices, assets, holdings, portfolios
 
 app = FastAPI(title=settings.app_name)
 
 app.include_router(portfolios.router)
 app.include_router(assets.router)
+app.include_router(holdings.router)
 app.include_router(asset_prices.router)
 
 @app.get("/")
