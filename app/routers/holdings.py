@@ -1,7 +1,7 @@
 """Portfolio holdings router for managing asset holdings within portfolios."""
 
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -11,11 +11,14 @@ from app.database import get_db
 from app.models.asset import Asset
 from app.models.portfolio import Portfolio
 from app.models.portfolio_holding import PortfolioHolding
+from app.schemas import HoldingResponse
 
 router = APIRouter(prefix="/portfolios", tags=["holdings"])
 
 
 class HoldingCreate(BaseModel):
+    """Schema for adding a holding to a portfolio."""
+
     asset_id: int
     quantity: Decimal
     purchase_price: Decimal | None = None
@@ -23,12 +26,16 @@ class HoldingCreate(BaseModel):
 
 
 class HoldingUpdate(BaseModel):
+    """Schema for updating a holding."""
+
     quantity: Decimal | None = None
     purchase_price: Decimal | None = None
     purchased_at: datetime | None = None
 
 
 class AssetInfo(BaseModel):
+    """Nested asset info in holding response."""
+
     id: int
     symbol: str
     name: str
@@ -37,22 +44,16 @@ class AssetInfo(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class HoldingResponse(BaseModel):
-    id: int
-    portfolio_id: int
-    asset_id: int
-    quantity: Decimal
-    purchase_price: Decimal | None
-    purchased_at: datetime | None
+class HoldingWithAssetResponse(HoldingResponse):
+    """Holding response with nested asset details."""
+
     asset: AssetInfo
 
-    model_config = {"from_attributes": True}
 
-
-@router.get("/{portfolio_id}/holdings", response_model=list[HoldingResponse])
+@router.get("/{portfolio_id}/holdings", response_model=list[HoldingWithAssetResponse])
 def list_holdings(
     portfolio_id: int, db: Session = Depends(get_db)
-) -> list[HoldingResponse]:
+) -> list[HoldingWithAssetResponse]:
     """List all holdings in a portfolio."""
     holdings = (
         db.query(PortfolioHolding)
@@ -63,10 +64,10 @@ def list_holdings(
     return holdings
 
 
-@router.post("/{portfolio_id}/holdings", response_model=HoldingResponse, status_code=201)
+@router.post("/{portfolio_id}/holdings", response_model=HoldingWithAssetResponse, status_code=201)
 def add_holding(
     portfolio_id: int, data: HoldingCreate, db: Session = Depends(get_db)
-) -> HoldingResponse:
+) -> HoldingWithAssetResponse:
     """Add an asset to a portfolio."""
     portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:
@@ -99,13 +100,13 @@ def add_holding(
     )
 
 
-@router.put("/{portfolio_id}/holdings/{asset_id}", response_model=HoldingResponse)
+@router.put("/{portfolio_id}/holdings/{asset_id}", response_model=HoldingWithAssetResponse)
 def update_holding(
     portfolio_id: int,
     asset_id: int,
     data: HoldingUpdate,
     db: Session = Depends(get_db),
-) -> HoldingResponse:
+) -> HoldingWithAssetResponse:
     """Update a holding's quantity or purchase details."""
     holding = (
         db.query(PortfolioHolding)

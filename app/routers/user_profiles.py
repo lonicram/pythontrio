@@ -1,13 +1,12 @@
 """UserProfile API routes for CRUD operations."""
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user_profile import UserProfile
+from app.schemas import UserProfileResponse
 
 router = APIRouter(prefix="/user-profiles", tags=["user-profiles"])
 
@@ -21,6 +20,7 @@ class UserProfileCreate(BaseModel):
         full_name: Optional full name for display.
         is_active: Whether the user account is active (defaults to True).
     """
+
     email: EmailStr
     username: str | None = None
     full_name: str | None = None
@@ -38,33 +38,11 @@ class UserProfileUpdate(BaseModel):
         full_name: Optional full name for display (optional).
         is_active: Whether the user account is active (optional).
     """
+
     email: EmailStr | None = None
     username: str | None = None
     full_name: str | None = None
     is_active: bool | None = None
-
-
-class UserProfileResponse(BaseModel):
-    """Schema for user profile responses.
-
-    Attributes:
-        id: Primary key.
-        email: Unique email address.
-        username: Optional unique display name.
-        full_name: Optional full name.
-        is_active: Whether the user account is active.
-        created_at: Timestamp of profile creation.
-        updated_at: Timestamp of last update.
-    """
-    id: int
-    email: str
-    username: str | None
-    full_name: str | None
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime | None
-
-    model_config = {"from_attributes": True}
 
 
 @router.get("/", response_model=list[UserProfileResponse])

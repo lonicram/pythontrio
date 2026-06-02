@@ -6,27 +6,19 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.asset import Asset
+from app.schemas import AssetResponse
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
 
 class AssetCreate(BaseModel):
+    """Schema for creating/updating an asset."""
+
     symbol: str
     name: str
     asset_type: str = "crypto"
     description: str | None = None
     price: Decimal | None = None
-
-
-class AssetResponse(BaseModel):
-    id: int
-    symbol: str
-    name: str
-    asset_type: str
-    description: str | None
-    price: Decimal | None
-
-    model_config = {"from_attributes": True}
 
 
 @router.get("/", response_model=list[AssetResponse])

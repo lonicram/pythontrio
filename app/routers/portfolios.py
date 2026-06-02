@@ -4,21 +4,16 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.portfolio import Portfolio
+from app.schemas import PortfolioResponse
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 
 
 class PortfolioCreate(BaseModel):
+    """Schema for creating/updating a portfolio."""
+
     name: str
     description: str | None = None
-
-
-class PortfolioResponse(BaseModel):
-    id: int
-    name: str
-    description: str | None
-
-    model_config = {"from_attributes": True}
 
 
 @router.get("/", response_model=list[PortfolioResponse])
