@@ -290,3 +290,261 @@ This pattern is useful when:
 - Validation depends on current database state
 - The check must happen after some records are written
 - You need to enforce limits that can't be expressed as DB constraints
+
+---
+
+## 7. Implicit Transactions Explained
+
+### The Key Configuration
+
+```python
+# database.py:14
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+```
+
+With `autocommit=False`, SQLAlchemy operates in **implicit transaction mode**:
+- A transaction **automatically begins** when the session first interacts with the database
+- The transaction stays open until you explicitly call `commit()` or `rollback()`
+- No explicit `BEGIN` statement is needed
+
+---
+
+### How the Flow Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Router (onboarding.py)                                         │
+│  ─────────────────────                                          │
+│  db = SessionLocal()  ← Session created, no transaction yet     │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Service (onboarding_service.py)                        │   │
+│  │  ───────────────────────────────                        │   │
+│  │  db.add(user)                                           │   │
+│  │  db.flush()  ← IMPLICIT BEGIN + INSERT user             │   │
+│  │              ← user.id now available (auto-increment)   │   │
+│  │                                                         │   │
+│  │  db.add(portfolio)                                      │   │
+│  │  db.flush()  ← INSERT portfolio (same transaction)      │   │
+│  │              ← portfolio.id now available               │   │
+│  │                                                         │   │
+│  │  db.add(holdings...)  ← Pending in session              │   │
+│  │  return user                                            │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  db.commit()  ← INSERT holdings + COMMIT (all or nothing)      │
+│  db.refresh(user)  ← Load relationships                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Why It's Safe
+
+**1. Single Transaction Boundary**
+
+The session is created in `get_db()` and passed through. All operations (user → portfolio → holdings) share the **same session** and therefore the **same implicit transaction**.
+
+**2. flush() vs commit()**
+
+| Operation | What it does | Transaction state |
+|-----------|--------------|-------------------|
+| `add()` | Marks object as pending | No DB interaction |
+| `flush()` | Sends SQL to DB, gets auto-IDs | Still uncommitted |
+| `commit()` | Makes changes permanent | Transaction ends |
+| `rollback()` | Discards all changes | Transaction ends |
+
+The `flush()` calls write rows to the database **but don't commit**. This is how we get `user.id` and `portfolio.id` for foreign keys while keeping everything rollback-able.
+
+**3. Atomicity Guarantee**
+
+If `commit()` fails (e.g., invalid `asset_id` violates FK constraint):
+- All flushed rows (user, portfolio) are **rolled back**
+- No orphan records exist
+- The router catches `IntegrityError` and calls `rollback()` explicitly
+
+**4. Caller Controls Commit**
+
+The service never commits - it documents this clearly:
+
+```python
+# onboarding_service.py:17-29
+def onboard_user(self, request: UserOnboardRequest) -> UserProfile:
+    """Create user, portfolio, and holdings (caller must commit).
+    ...
+    Note:
+        This method does NOT commit. Caller controls transaction boundary.
+    """
+```
+
+This pattern is called **"Unit of Work with deferred commit"** - the router acts as the transaction coordinator.
+
+---
+
+### Why This Design Was Chosen
+
+The plan explicitly states the rationale:
+
+> **Why transactions matter here:** We intentionally defer asset validation to the database FK constraint. This means if a holding references an invalid `asset_id`, the user and portfolio rows are already written (via `flush()`) and must be rolled back. This makes the atomic behavior observable and testable.
+
+This design:
+1. Keeps the service simple (no pre-validation queries)
+2. Relies on database constraints as the source of truth
+3. Makes transaction rollback **demonstrable** - you can write a test where user+portfolio get created, then holdings fail, and verify everything is rolled back
+
+---
+
+### Potential Gotcha
+
+If you forget to call `commit()` in the router, the transaction is never finalized and `get_db()` closes the session:
+
+```python
+# database.py:29-33
+finally:
+    db.close()  # Implicitly rolls back uncommitted transactions
+```
+
+This is **safe** (no data corruption) but would silently discard your work. The current implementation handles this correctly by always calling `commit()` on success.
+
+---
+
+## 8. autocommit=True vs autocommit=False
+
+### With `autocommit=False` (Current Setup)
+
+```python
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+```
+
+**Behavior:**
+- Transaction starts implicitly on first DB operation
+- All operations are batched in one transaction
+- You must call `commit()` to persist changes
+- You must call `rollback()` to discard changes
+
+```python
+db.add(user)      # pending
+db.add(portfolio) # pending
+db.flush()        # SQL sent, still uncommitted
+db.commit()       # NOW it's permanent
+```
+
+---
+
+### With `autocommit=True`
+
+```python
+SessionLocal = sessionmaker(autocommit=True, autoflush=False, bind=engine)
+```
+
+**Behavior:**
+- **Each statement commits immediately** (no implicit transaction)
+- To group operations, you must **explicitly** start a transaction with `session.begin()`
+
+```python
+# Without begin() - each operation auto-commits separately
+db.add(user)
+db.flush()    # COMMITTED immediately - user exists in DB
+
+db.add(portfolio)
+db.flush()    # COMMITTED immediately - portfolio exists in DB
+
+# If this fails, user and portfolio are ALREADY committed (orphans!)
+db.add(holding_with_bad_fk)
+db.flush()    # FAILS - but user/portfolio are NOT rolled back
+```
+
+To get atomicity with `autocommit=True`, you need explicit transactions:
+
+```python
+with db.begin():  # Explicit transaction start
+    db.add(user)
+    db.add(portfolio)
+    db.add(holding)
+# Auto-commits on exit, or rolls back on exception
+```
+
+---
+
+### Comparison Table
+
+| Aspect | `autocommit=False` | `autocommit=True` |
+|--------|-------------------|-------------------|
+| Transaction start | Implicit (first operation) | Explicit (`begin()`) |
+| Default behavior | All ops in one transaction | Each op commits immediately |
+| Rollback scope | All uncommitted work | Only current `begin()` block |
+| Code verbosity | Less (implicit) | More (explicit `begin()`) |
+| Risk of orphan data | Low | High if you forget `begin()` |
+
+---
+
+### When `autocommit=True` Is Needed
+
+**1. Long-running read operations**
+
+When you want to release locks quickly and see other transactions' changes:
+
+```python
+# autocommit=True: each SELECT sees latest data
+results = db.query(Asset).filter(Asset.price > 100).all()
+# No transaction held open between queries
+```
+
+With `autocommit=False`, a long-running session holds a transaction open, which can cause:
+- Lock contention
+- Stale reads (snapshot isolation)
+
+**2. DDL operations (schema changes)**
+
+Some databases require DDL outside transactions:
+
+```python
+# PostgreSQL: CREATE INDEX CONCURRENTLY can't run in a transaction
+with engine.connect() as conn:
+    conn.execution_options(isolation_level="AUTOCOMMIT")
+    conn.execute(text("CREATE INDEX CONCURRENTLY ..."))
+```
+
+**3. Alembic migrations**
+
+Alembic uses autocommit for certain operations:
+
+```python
+# Alembic often runs migrations in autocommit mode
+with connectable.connect() as connection:
+    context.configure(connection=connection, ...)
+    with context.begin_transaction():
+        context.run_migrations()
+```
+
+**4. Independent operations that shouldn't affect each other**
+
+When you want partial success (rare in web apps):
+
+```python
+# Log entry should persist even if main operation fails
+with db.begin():
+    log_entry = AuditLog(action="attempt_transfer")
+    db.add(log_entry)
+# Committed
+
+with db.begin():
+    transfer_money(...)  # If this fails, log entry survives
+```
+
+---
+
+### Why `autocommit=False` Is Better for This App
+
+The onboarding flow **requires** atomic transactions:
+
+```
+User → Portfolio → Holdings (all or nothing)
+```
+
+With `autocommit=True`, you'd need to wrap every endpoint in `with db.begin():`, which:
+1. Is easy to forget
+2. Adds boilerplate
+3. Creates bugs when developers miss it
+
+`autocommit=False` makes atomicity the **default** - safer for web applications.
