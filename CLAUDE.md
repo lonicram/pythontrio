@@ -22,3 +22,7 @@ Keep the structure simple and robust:
 - Use type hints for function signatures
 - Write docstrings in Google format
 - Keep functions small and focused
+
+
+## Agents
+Always try to use "dev" agent for development. And "architect" for planning tasks and code review.
