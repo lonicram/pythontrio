@@ -1,7 +1,18 @@
 erDiagram
+    USER_PROFILE ||--o{ PORTFOLIO : "owns (CASCADE)"
     ASSET ||--o{ ASSET_PRICE : "has price history (CASCADE)"
     ASSET ||--o{ PORTFOLIO_HOLDING : "held in (RESTRICT)"
     PORTFOLIO ||--o{ PORTFOLIO_HOLDING : "contains (CASCADE)"
+
+    USER_PROFILE {
+        int id PK
+        string email UK "indexed, not null"
+        string username UK "indexed, nullable"
+        string full_name "nullable"
+        bool is_active "default true"
+        datetime created_at
+        datetime updated_at "nullable"
+    }
 
     ASSET {
         int id PK
@@ -25,6 +36,7 @@ erDiagram
 
     PORTFOLIO {
         int id PK
+        int owner_id FK "indexed, nullable, ON DELETE CASCADE"
         string name
         string description "nullable"
         datetime created_at
