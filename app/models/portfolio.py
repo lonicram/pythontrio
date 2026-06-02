@@ -4,13 +4,14 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, func
+from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.portfolio_holding import PortfolioHolding
+    from app.models.user_profile import UserProfile
 
 
 class Portfolio(Base):
@@ -19,6 +20,12 @@ class Portfolio(Base):
     __tablename__ = "portfolios"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_profiles.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="Optional user profile who owns this portfolio"
+    )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
@@ -33,6 +40,7 @@ class Portfolio(Base):
     )
 
     # Relationships
+    owner: Mapped["UserProfile | None"] = relationship(back_populates="portfolios")
     holdings: Mapped[list["PortfolioHolding"]] = relationship(
         back_populates="portfolio",
         cascade="all, delete-orphan"

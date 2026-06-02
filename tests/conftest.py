@@ -13,6 +13,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.models.asset import Asset
 from app.models.portfolio import Portfolio
+from app.models.user_profile import UserProfile
 
 # Default payload for creating test assets via API
 DEFAULT_ASSET_PAYLOAD = {
@@ -131,3 +132,46 @@ def created_portfolio(client: TestClient) -> dict:
     response = client.post("/portfolios/", json=DEFAULT_PORTFOLIO_PAYLOAD)
     assert response.status_code == 201, f"Fixture setup failed: {response.json()}"
     return response.json()
+
+
+# Default payload for creating test user profiles via API
+DEFAULT_USER_PROFILE_PAYLOAD = {
+    "email": "testuser@example.com",
+    "username": "testuser",
+    "full_name": "Test User",
+}
+
+
+@pytest.fixture(scope="function")
+def created_user_profile(client: TestClient) -> dict:
+    """Create a user profile via API and return the response data.
+
+    Args:
+        client: FastAPI test client fixture.
+
+    Returns:
+        A dict containing the created user profile's data including its assigned ID.
+    """
+    response = client.post("/user-profiles/", json=DEFAULT_USER_PROFILE_PAYLOAD)
+    assert response.status_code == 201, f"Fixture setup failed: {response.json()}"
+    return response.json()
+
+
+@pytest.fixture(scope="function")
+def sample_user_profile(db_session: Session) -> UserProfile:
+    """Create and return a sample user profile.
+
+    Args:
+        db_session: SQLAlchemy session fixture for database operations.
+
+    Returns:
+        A persisted UserProfile instance.
+    """
+    user_profile = UserProfile(
+        email="test@example.com",
+        username="testuser",
+        full_name="Test User"
+    )
+    db_session.add(user_profile)
+    db_session.flush()
+    return user_profile

@@ -1,7 +1,7 @@
 ---
 name: dev
 description: "Use this agent when you need to write Python code, especially involving FastAPI or SQLAlchemy. This includes creating API endpoints, database models, migrations, query optimization, or any Python code that should follow best practices and idiomatic patterns.\\n\\nExamples:\\n\\n<example>\\nContext: User needs to create a new API endpoint.\\nuser: \"I need an endpoint to get all users with pagination\"\\nassistant: \"I'll use the dev agent to create a properly structured FastAPI endpoint with pagination support.\"\\n<Task tool call to dev agent>\\n</example>\\n\\n<example>\\nContext: User needs to define a database model.\\nuser: \"Create a model for storing blog posts with title, content, and author\"\\nassistant: \"Let me use the dev agent to create a SQLAlchemy model following best practices.\"\\n<Task tool call to dev agent>\\n</example>\\n\\n<example>\\nContext: User asks for help with Python code structure.\\nuser: \"How should I organize my service layer?\"\\nassistant: \"I'll use the dev agent to help design a clean service layer architecture.\"\\n<Task tool call to dev agent>\\n</example>\\n\\n<example>\\nContext: User needs to write any Python function.\\nuser: \"Write a function to validate email addresses\"\\nassistant: \"I'll use the dev agent to write a well-typed, documented Python function.\"\\n<Task tool call to dev agent>\\n</example>"
-model: opus
+model: sonnet
 color: green
 ---
 

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.asset import Asset
 from app.models.portfolio import Portfolio
 from app.models.portfolio_holding import PortfolioHolding
+from app.models.user_profile import UserProfile
 
 
 def test_asset_creation() -> None:
@@ -204,3 +205,86 @@ def test_portfolio_holding_repr() -> None:
 
     expected = "<PortfolioHolding(portfolio=1, asset=42, qty=5.5)>"
     assert repr(holding) == expected
+
+
+def test_user_profile_creation() -> None:
+    """Test UserProfile model instantiation with all fields."""
+    user_profile = UserProfile(
+        id=1,
+        email="test@example.com",
+        username="testuser",
+        full_name="Test User",
+        is_active=True,
+    )
+
+    assert user_profile.id == 1
+    assert user_profile.email == "test@example.com"
+    assert user_profile.username == "testuser"
+    assert user_profile.full_name == "Test User"
+    assert user_profile.is_active is True
+
+
+def test_user_profile_creation_minimal(db_session: Session) -> None:
+    """Test UserProfile model with only required fields.
+
+    Args:
+        db_session: SQLAlchemy session fixture for database operations.
+    """
+    user_profile = UserProfile(email="minimal@example.com")
+    db_session.add(user_profile)
+    db_session.commit()
+
+    assert user_profile.email == "minimal@example.com"
+    assert user_profile.username is None
+    assert user_profile.full_name is None
+    assert user_profile.is_active is True  # Server default applied by database
+
+
+def test_user_profile_repr() -> None:
+    """Test UserProfile __repr__ method returns expected string format."""
+    user_profile = UserProfile(id=1, email="test@example.com", username="testuser")
+
+    assert repr(user_profile) == "<UserProfile(id=1, email=test@example.com, username=testuser)>"
+
+
+def test_user_profile_portfolio_relationship(db_session: Session) -> None:
+    """Test UserProfile-Portfolio bidirectional relationship."""
+    user_profile = UserProfile(email="owner@example.com")
+    db_session.add(user_profile)
+    db_session.flush()
+
+    portfolio = Portfolio(name="User Portfolio", owner_id=user_profile.id)
+    db_session.add(portfolio)
+    db_session.flush()
+
+    # Test bidirectional access
+    assert portfolio.owner == user_profile
+    assert portfolio in user_profile.portfolios
+
+
+def test_user_profile_cascade_delete_portfolios(db_session: Session) -> None:
+    """Test that deleting a user profile cascades to their portfolios."""
+    user_profile = UserProfile(email="cascade@example.com")
+    db_session.add(user_profile)
+    db_session.flush()
+
+    portfolio = Portfolio(name="Cascade Test", owner_id=user_profile.id)
+    db_session.add(portfolio)
+    db_session.commit()
+
+    portfolio_id = portfolio.id
+    db_session.delete(user_profile)
+    db_session.commit()
+
+    # Portfolio should be deleted
+    assert db_session.get(Portfolio, portfolio_id) is None
+
+
+def test_portfolio_without_owner(db_session: Session) -> None:
+    """Test that portfolios can exist without an owner (backward compatibility)."""
+    portfolio = Portfolio(name="Orphan Portfolio")
+    db_session.add(portfolio)
+    db_session.commit()
+
+    assert portfolio.owner_id is None
+    assert portfolio.owner is None
