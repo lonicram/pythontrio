@@ -1,6 +1,7 @@
 """Asset price history endpoints for time-series data."""
 
 from datetime import datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -62,7 +63,7 @@ def create_asset_price(
     asset_id: int,
     data: AssetPriceCreate,
     db: Session = Depends(get_db),
-):
+) -> AssetPrice:
     """Insert a single price record for an asset.
 
     This endpoint is primarily used by cronjobs to record new price snapshots.
@@ -96,7 +97,7 @@ def create_asset_price(
     db.add(asset_price)
 
     # Optional: Update asset's current price for denormalization (fast reads)
-    asset.price = data.price
+    asset.price = Decimal(str(data.price))
 
     db.commit()
     db.refresh(asset_price)
@@ -112,7 +113,7 @@ def get_asset_price_history(
     limit: int = Query(1000, ge=1, le=10000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     db: Session = Depends(get_db),
-):
+) -> AssetPriceChartResponse:
     """Get historical price data for an asset with optional time-range filtering.
 
     This endpoint is used by frontends to render price charts. Results are
@@ -159,7 +160,7 @@ def get_asset_price_history(
     return AssetPriceChartResponse(
         asset_id=asset.id,
         asset_name=asset.name,
-        prices=prices,
+        prices=[AssetPriceResponse.model_validate(p) for p in prices],
         count=total_count,
         from_date=from_date,
         to_date=to_date,
@@ -170,7 +171,7 @@ def get_asset_price_history(
 def get_latest_asset_price(
     asset_id: int,
     db: Session = Depends(get_db),
-):
+) -> AssetPrice:
     """Get the most recent price record for an asset.
 
     Args:

@@ -24,13 +24,13 @@ class AssetCreate(BaseModel):
 
 
 @router.get("/", response_model=list[AssetResponse])
-def list_assets(db: Session = Depends(get_db)) -> list[AssetResponse]:
+def list_assets(db: Session = Depends(get_db)) -> list[Asset]:
     """List all assets in the catalog."""
     return db.query(Asset).all()
 
 
 @router.get("/{asset_id}", response_model=AssetResponse)
-def get_asset(asset_id: int, db: Session = Depends(get_db)) -> AssetResponse:
+def get_asset(asset_id: int, db: Session = Depends(get_db)) -> Asset:
     """Get an asset by ID."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
@@ -39,7 +39,7 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)) -> AssetResponse:
 
 
 @router.post("/", response_model=AssetResponse, status_code=201)
-def create_asset(data: AssetCreate, db: Session = Depends(get_db)) -> AssetResponse:
+def create_asset(data: AssetCreate, db: Session = Depends(get_db)) -> Asset:
     """Create a new asset in the catalog."""
     asset = Asset(**data.model_dump())
     db.add(asset)
@@ -51,7 +51,7 @@ def create_asset(data: AssetCreate, db: Session = Depends(get_db)) -> AssetRespo
 @router.put("/{asset_id}", response_model=AssetResponse)
 def update_asset(
     asset_id: int, data: AssetCreate, db: Session = Depends(get_db)
-) -> AssetResponse:
+) -> Asset:
     """Update an asset."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:

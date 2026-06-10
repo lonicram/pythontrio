@@ -20,13 +20,13 @@ class PortfolioCreate(BaseModel):
 
 
 @router.get("/", response_model=list[PortfolioResponse])
-def list_portfolios(db: Session = Depends(get_db)):
+def list_portfolios(db: Session = Depends(get_db)) -> list[Portfolio]:
     """List all portfolios."""
     return db.query(Portfolio).all()
 
 
 @router.get("/{portfolio_id}", response_model=PortfolioResponse)
-def get_portfolio(portfolio_id: int, db: Session = Depends(get_db)):
+def get_portfolio(portfolio_id: int, db: Session = Depends(get_db)) -> Portfolio:
     """Get a portfolio by ID."""
     portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:
@@ -35,7 +35,7 @@ def get_portfolio(portfolio_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=PortfolioResponse, status_code=201)
-def create_portfolio(data: PortfolioCreate, db: Session = Depends(get_db)):
+def create_portfolio(data: PortfolioCreate, db: Session = Depends(get_db)) -> Portfolio:
     """Create a new portfolio."""
     portfolio = Portfolio(**data.model_dump())
     db.add(portfolio)
@@ -47,7 +47,7 @@ def create_portfolio(data: PortfolioCreate, db: Session = Depends(get_db)):
 @router.put("/{portfolio_id}", response_model=PortfolioResponse)
 def update_portfolio(
     portfolio_id: int, data: PortfolioCreate, db: Session = Depends(get_db)
-):
+) -> Portfolio:
     """Update a portfolio."""
     portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:
@@ -60,7 +60,7 @@ def update_portfolio(
 
 
 @router.delete("/{portfolio_id}", status_code=204)
-def delete_portfolio(portfolio_id: int, db: Session = Depends(get_db)):
+def delete_portfolio(portfolio_id: int, db: Session = Depends(get_db)) -> None:
     """Delete a portfolio."""
     portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:

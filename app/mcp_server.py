@@ -30,7 +30,7 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-def list_assets() -> list[dict]:
+def list_assets() -> list[AssetResponse]:
     """List all available assets in the portfolio system.
 
     Returns a list of assets including their symbol, name, type, and current price.
@@ -39,18 +39,15 @@ def list_assets() -> list[dict]:
     db = SessionLocal()
     try:
         service = ReadService(db)
-        assets = service.list_assets()
-        # Use Pydantic for consistent serialization with REST API
-        return [
-            AssetResponse.model_validate(a).model_dump(mode="json")
-            for a in assets
-        ]
+        return [AssetResponse.model_validate(a) for a in service.list_assets()]
     finally:
         db.close()
 
 
 @mcp.tool()
-def list_portfolios(include_holdings: bool = False) -> list[dict]:
+def list_portfolios(
+    include_holdings: bool = False,
+) -> list[PortfolioResponse] | list[PortfolioWithHoldingsResponse]:
     """List all portfolios in the system.
 
     Args:
@@ -65,20 +62,14 @@ def list_portfolios(include_holdings: bool = False) -> list[dict]:
         portfolios = service.list_portfolios(include_holdings=include_holdings)
 
         if include_holdings:
-            return [
-                PortfolioWithHoldingsResponse.model_validate(p).model_dump(mode="json")
-                for p in portfolios
-            ]
-        return [
-            PortfolioResponse.model_validate(p).model_dump(mode="json")
-            for p in portfolios
-        ]
+            return [PortfolioWithHoldingsResponse.model_validate(p) for p in portfolios]
+        return [PortfolioResponse.model_validate(p) for p in portfolios]
     finally:
         db.close()
 
 
 @mcp.tool()
-def list_users(active_only: bool = True) -> list[dict]:
+def list_users(active_only: bool = True) -> list[UserProfileResponse]:
     """List user profiles in the system.
 
     Args:
@@ -89,11 +80,7 @@ def list_users(active_only: bool = True) -> list[dict]:
     db = SessionLocal()
     try:
         service = ReadService(db)
-        users = service.list_users(active_only=active_only)
-        return [
-            UserProfileResponse.model_validate(u).model_dump(mode="json")
-            for u in users
-        ]
+        return [UserProfileResponse.model_validate(u) for u in service.list_users(active_only=active_only)]
     finally:
         db.close()
 

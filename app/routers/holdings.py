@@ -55,7 +55,7 @@ class HoldingWithAssetResponse(HoldingResponse):
 @router.get("/{portfolio_id}/holdings", response_model=list[HoldingWithAssetResponse])
 def list_holdings(
     portfolio_id: int, db: Session = Depends(get_db)
-) -> list[HoldingWithAssetResponse]:
+) -> list[PortfolioHolding]:
     """List all holdings in a portfolio."""
     holdings = (
         db.query(PortfolioHolding)
@@ -71,7 +71,7 @@ def list_holdings(
 )
 def add_holding(
     portfolio_id: int, data: HoldingCreate, db: Session = Depends(get_db)
-) -> HoldingWithAssetResponse:
+) -> PortfolioHolding:
     """Add an asset to a portfolio."""
     portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:
@@ -96,12 +96,14 @@ def add_holding(
     db.add(holding)
     db.commit()
 
-    return (
+    result = (
         db.query(PortfolioHolding)
         .filter(PortfolioHolding.id == holding.id)
         .options(joinedload(PortfolioHolding.asset))
         .first()
     )
+    assert result is not None
+    return result
 
 
 @router.put(
@@ -112,7 +114,7 @@ def update_holding(
     asset_id: int,
     data: HoldingUpdate,
     db: Session = Depends(get_db),
-) -> HoldingWithAssetResponse:
+) -> PortfolioHolding:
     """Update a holding's quantity or purchase details."""
     holding = (
         db.query(PortfolioHolding)
@@ -131,12 +133,14 @@ def update_holding(
 
     db.commit()
 
-    return (
+    result = (
         db.query(PortfolioHolding)
         .filter(PortfolioHolding.id == holding.id)
         .options(joinedload(PortfolioHolding.asset))
         .first()
     )
+    assert result is not None
+    return result
 
 
 @router.delete("/{portfolio_id}/holdings/{asset_id}", status_code=204)

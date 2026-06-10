@@ -30,7 +30,7 @@ class UserProfileUpdate(BaseModel):
 
 
 @router.get("/", response_model=list[UserProfileResponse])
-def list_user_profiles(db: Session = Depends(get_db)) -> list[UserProfileResponse]:
+def list_user_profiles(db: Session = Depends(get_db)) -> list[UserProfile]:
     """List all user profiles."""
     return db.query(UserProfile).all()
 
@@ -38,7 +38,7 @@ def list_user_profiles(db: Session = Depends(get_db)) -> list[UserProfileRespons
 @router.get("/{user_id}", response_model=UserProfileResponse)
 def get_user_profile(
     user_id: int, db: Session = Depends(get_db)
-) -> UserProfileResponse:
+) -> UserProfile:
     """Get a user profile by ID."""
     user_profile = db.query(UserProfile).filter(UserProfile.id == user_id).first()
     if not user_profile:
@@ -49,7 +49,7 @@ def get_user_profile(
 @router.post("/", response_model=UserProfileResponse, status_code=201)
 def create_user_profile(
     data: UserProfileCreate, db: Session = Depends(get_db)
-) -> UserProfileResponse:
+) -> UserProfile:
     """Create a new user profile."""
     # Check for duplicate email
     existing_email = db.query(UserProfile).filter(
@@ -76,7 +76,7 @@ def create_user_profile(
 @router.put("/{user_id}", response_model=UserProfileResponse)
 def update_user_profile(
     user_id: int, data: UserProfileUpdate, db: Session = Depends(get_db)
-) -> UserProfileResponse:
+) -> UserProfile:
     """Update a user profile."""
     user_profile = db.query(UserProfile).filter(UserProfile.id == user_id).first()
     if not user_profile:
