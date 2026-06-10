@@ -1,0 +1,35 @@
+default_language_version:
+  python: python3.12
+
+repos:
+  # File hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: debug-statements
+
+  # Linting and formatting (mirrors `make lint-fix` and `make format`)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Type checking — local hook required: pydantic plugin needs the real venv
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict, project venv)
+        entry: venv/bin/python -m mypy app tests scripts
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true

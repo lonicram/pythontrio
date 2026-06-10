@@ -43,8 +43,7 @@ install: ## Install production dependencies
 	$(PYTHON) -m pip install -r requirements.txt
 
 install-dev: ## Install all dependencies (prod + dev)
-	$(PYTHON) -m pip install -r requirements.txt
-	$(PYTHON) -m pip install pytest pytest-cov ruff pre-commit httpx
+	$(PYTHON) -m pip install -r requirements-dev.txt
 
 install-hooks: ## Set up pre-commit hooks
 	$(PYTHON) -m pre_commit install

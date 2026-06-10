@@ -80,7 +80,10 @@ def list_users(active_only: bool = True) -> list[UserProfileResponse]:
     db = SessionLocal()
     try:
         service = ReadService(db)
-        return [UserProfileResponse.model_validate(u) for u in service.list_users(active_only=active_only)]
+        return [
+            UserProfileResponse.model_validate(u)
+            for u in service.list_users(active_only=active_only)
+        ]
     finally:
         db.close()
 

@@ -15,6 +15,14 @@ module = "fastmcp.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = "yfinance"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "scripts.*"
+disallow_any_explicit = false
+
+[[tool.mypy.overrides]]
 # BaseSettings.__init__(**values: Any) bleeds into synthesized Settings.__init__
 # via the pydantic mypy plugin — not our Any, so exempt this module only.
 module = "app.config"
@@ -23,6 +31,9 @@ disallow_any_explicit = false
 [[tool.mypy.overrides]]
 module = ["tests.*", "alembic.*", "alembic.versions.*"]
 disallow_untyped_defs = false
+disallow_any_generics = false
+disallow_any_explicit = false
+warn_return_any = false
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

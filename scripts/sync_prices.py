@@ -95,7 +95,6 @@ class PriceProvider(Protocol):
             The current price as a float, or None if unavailable.
         """
         ...
-        pass
 
 
 class CoinGeckoProvider:
@@ -297,7 +296,7 @@ class PythonTrioAPIClient:
 
         try:
             url = f"{self.base_url}/assets/{asset_id}/prices"
-            payload = {
+            payload: dict[str, str | int | float] = {
                 "asset_id": asset_id,
                 "price": price,
                 "recorded_at": recorded_at.isoformat(),
@@ -364,7 +363,7 @@ class PriceSyncService:
     def __init__(
         self,
         api_client: PythonTrioAPIClient,
-        coingecko_provider: PriceProvider, # CoinGeckoProvider
+        coingecko_provider: PriceProvider,  # CoinGeckoProvider
         yahoo_provider: PriceProvider,
     ):
         """Initialize sync service.
