@@ -3,7 +3,7 @@
 
 .PHONY: help install install-dev install-hooks \
         db-start db-stop db-reset db-migrate db-revision db-downgrade db-history \
-        run dev start \
+        run dev start serve mcp-local \
         lint lint-fix format check \
         test test-unit test-integration test-cov test-fast \
         setup setup-ci clean
@@ -95,6 +95,12 @@ run: ## Production mode (no reload)
 
 dev: ## Development mode (auto-reload)
 	$(PYTHON) -m uvicorn app.main:app --host $(HOST) --port $(PORT) --reload
+
+serve: ## Run server (serves both REST and MCP at /mcp)
+	$(PYTHON) -m uvicorn app.main:app --reload --host $(HOST) --port $(PORT)
+
+mcp-local: ## Run MCP server standalone (stdio mode for local testing)
+	$(PYTHON) -m app.mcp_server
 
 start: db-start dev ## Start database and app (dev mode)
 
