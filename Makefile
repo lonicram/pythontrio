@@ -93,8 +93,10 @@ db-history: ## Show migration history
 run: ## Production mode (no reload)
 	$(PYTHON) -m uvicorn app.main:app --host $(HOST) --port $(PORT)
 
-dev: ## Development mode (auto-reload)
-	$(PYTHON) -m uvicorn app.main:app --host $(HOST) --port $(PORT) --reload
+dev: ## Development mode (auto-reload) with price sync running in background
+	$(PYTHON) scripts/sync_prices.py & sync_pid=$$!; \
+	$(PYTHON) -m uvicorn app.main:app --host $(HOST) --port $(PORT) --reload; \
+	kill $$sync_pid 2>/dev/null || true
 
 serve: ## Run server (serves both REST and MCP at /mcp)
 	$(PYTHON) -m uvicorn app.main:app --reload --host $(HOST) --port $(PORT)

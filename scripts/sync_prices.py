@@ -32,7 +32,7 @@ T = TypeVar("T")
 
 # API configuration
 API_BASE_URL = "http://localhost:8000"
-SYNC_INTERVAL_MINUTES = 1
+SYNC_INTERVAL_MINUTES = 5
 
 # Asset-to-symbol mapping
 # Maps asset names to their provider symbols and types
