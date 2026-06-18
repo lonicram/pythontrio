@@ -122,6 +122,9 @@ function renderProfile(p) {
   indicator.textContent = `●  ${p.status}`;
   indicator.className = `state-${p.status}`;
 
+  // Version badge
+  document.getElementById('versionBadge').textContent = `v${p.version}`;
+
   // Profile meta fields
   document.getElementById('dEmail').textContent = p.email;
   document.getElementById('dUsername').textContent = p.username || '—';
@@ -134,6 +137,7 @@ function renderProfile(p) {
   document.getElementById('btnDelete').disabled    = !allowed.btnDelete;
 
   clearError();
+  clearConflict();
 }
 
 // -----------------------------------------------
@@ -155,7 +159,14 @@ async function doTransition(target) {
 
     if (res.ok) {
       renderProfile(body);
+    } else if (res.status === 409) {
+      clearError();
+      const conflict = body.detail || body;
+      showConflict(
+        `Profile changed to "${conflict.current_status}" (v${conflict.current_version}) while you were deciding.`
+      );
     } else {
+      clearConflict();
       showError(body.detail || 'Transition failed.');
     }
   } catch (err) {
@@ -165,7 +176,7 @@ async function doTransition(target) {
 }
 
 // -----------------------------------------------
-// Error banner
+// Error banner (400 — amber)
 // -----------------------------------------------
 
 function showError(msg) {
@@ -178,6 +189,24 @@ function clearError() {
   const banner = document.getElementById('errorBanner');
   banner.textContent = '';
   banner.classList.add('hidden');
+}
+
+// -----------------------------------------------
+// Conflict banner (409 — red)
+// -----------------------------------------------
+
+function showConflict(msg) {
+  document.getElementById('conflictMsg').textContent = msg;
+  document.getElementById('conflictBanner').classList.remove('hidden');
+}
+
+function clearConflict() {
+  document.getElementById('conflictMsg').textContent = '';
+  document.getElementById('conflictBanner').classList.add('hidden');
+}
+
+function reloadProfile() {
+  if (currentProfileId !== null) openDetail(currentProfileId);
 }
 
 // -----------------------------------------------

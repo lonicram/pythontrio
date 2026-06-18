@@ -5,6 +5,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.database import get_db
 from app.exceptions import IllegalTransitionError, ProfileNotFound
@@ -58,7 +59,20 @@ def transition_user_profile(
     except IllegalTransitionError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     time.sleep(1)  # sleep for 1 second for demo purposes
-    db.commit()
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        current = db.query(UserProfile).filter(UserProfile.id == user_id).first()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "detail": "Profile was modified by another request. Reload and try again.",
+                "current_status": current.status.value if current else None,
+                "current_version": current.version if current else None,
+            },
+            headers={"Retry-After": "1"},
+        )
     db.refresh(profile)
     return profile
 

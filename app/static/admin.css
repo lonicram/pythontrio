@@ -348,6 +348,49 @@ body {
 }
 
 /* -----------------------------------------------
+   Version badge
+----------------------------------------------- */
+.version-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  color: #94A3B8;
+  margin-left: 0.75rem;
+  vertical-align: middle;
+}
+
+/* -----------------------------------------------
+   Conflict banner (red — distinct from amber error banner)
+----------------------------------------------- */
+.conflict-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-left: 4px solid #DC2626;
+  background: #FEF2F2;
+  color: #991B1B;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0 4px 4px 0;
+  margin-top: 1rem;
+}
+
+.btn-reload {
+  flex-shrink: 0;
+  padding: 0.25rem 0.75rem;
+  background: #DC2626;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-reload:hover {
+  background: #B91C1C;
+}
+
+/* -----------------------------------------------
    Utility
 ----------------------------------------------- */
 .hidden {

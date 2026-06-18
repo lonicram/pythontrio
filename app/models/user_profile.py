@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String, func
+from sqlalchemy import Boolean, Integer, String, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,7 @@ class UserProfile(Base):
         full_name: Optional full name for display.
         is_active: Whether the user can log in.
         status: Lifecycle status (new, verified, suspended, deleted).
+        version: Optimistic locking counter, auto-incremented by SQLAlchemy on every UPDATE.
         created_at: Timestamp of user profile creation.
         updated_at: Timestamp of last update.
         portfolios: User's owned portfolios.
@@ -75,6 +76,8 @@ class UserProfile(Base):
         default=ProfileStatus.NEW,
         server_default=ProfileStatus.NEW.value,
     )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    __mapper_args__ = {"version_id_col": version}
 
     # Audit timestamps
     created_at: Mapped[datetime] = mapped_column(

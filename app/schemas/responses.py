@@ -64,6 +64,7 @@ class UserProfileResponse(BaseModel):
     full_name: str | None
     is_active: bool
     status: ProfileStatus
+    version: int
     created_at: datetime
     updated_at: datetime | None
 

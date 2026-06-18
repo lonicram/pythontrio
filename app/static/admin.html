@@ -40,6 +40,7 @@
         <div class="detail-panel">
           <div class="state-display">
             <span id="stateIndicator"></span>
+            <span id="versionBadge" class="version-badge"></span>
           </div>
           <div class="profile-meta">
             <div class="meta-row">
@@ -59,6 +60,10 @@
             <button id="btnDelete"    class="action-btn btn-delete"    onclick="doTransition('deleted')">Delete <span class="arrow">&#8594;</span></button>
           </div>
           <div id="errorBanner" class="error-banner hidden"></div>
+          <div id="conflictBanner" class="conflict-banner hidden">
+            <span id="conflictMsg"></span>
+            <button class="btn-reload" onclick="reloadProfile()">Reload</button>
+          </div>
         </div>
       </section>
     </main>
