@@ -36,7 +36,31 @@ stateDiagram-v2
     end note
 ```
 
-**The race.** Both admins read `new`, both validate legally, but only one write can win — and the version check turns the lost update into a 409, after which the reload re-runs the machine and correctly refuses with a 400:
+**The race without optimistic locking (the bug we start from).** No `version` column, blind `setattr` + commit. Both writes succeed, the later one wins, and the delete is silently lost — the account is resurrected into an illegal state with no error raised anywhere:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Admin A (Delete)
+    participant DB as user_profiles row
+    participant B as Admin B (Verify)
+
+    Note over DB: status=new (no version column)
+    A->>DB: read (status=new)
+    B->>DB: read (status=new)
+    Note over A,B: both validate against the stale "new"
+
+    A->>DB: UPDATE SET status=deleted WHERE id=?
+    Note over DB: status=deleted
+    DB-->>A: 200 OK
+
+    B->>DB: UPDATE SET status=verified WHERE id=?
+    Note over DB: status=verified -- delete silently lost!
+    DB-->>B: 200 OK
+    Note over DB: RESURRECTED: deleted -> verified,<br/>an illegal state, and nobody noticed
+```
+
+**The race with optimistic locking (the fix).** Both admins read `new`, both validate legally, but only one write can win — the version check turns the lost update into a 409, after which the reload re-runs the machine and correctly refuses with a 400:
 
 ```mermaid
 sequenceDiagram
