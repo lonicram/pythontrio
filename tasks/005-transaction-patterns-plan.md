@@ -313,7 +313,7 @@ def downgrade():
 | Concern | Mitigation |
 |---------|------------|
 | **PostgreSQL-specific features** | Patterns 6 & 7 require PostgreSQL. Add config check and skip/warn on SQLite. |
-| **Demo delays blocking production** | All endpoints live under `/tx-demo`; `ENABLE_DEMO_ENDPOINTS` config flag (default: true in dev, off in prod). The optional `?delay_ms=` hook on the transition endpoint (for showing genuine concurrent overlap in a terminal) must only be active when this flag is set. |
+| **Demo-only endpoints in production** | Patterns 1–3, 5–7 live under `/tx-demo` with an `ENABLE_DEMO_ENDPOINTS` flag (default: true in dev, off in prod). Pattern 4 (`POST /user-profiles/{id}/transition`) is a real production endpoint — no flag, no artificial delay parameters. |
 | **Deadlocks with pessimistic locking** | Always lock in consistent order (by asset_id ASC); set lock timeout |
 | **Optimistic lock retries** | Return `Retry-After: 1` header on 409; document exponential backoff |
 | **Isolation level overhead** | SERIALIZABLE for demo only; document 10-30% performance cost |
@@ -348,7 +348,7 @@ def downgrade():
 
 5. **Migration** - Add `status` enum + `version` columns to `user_profiles` table
 6. **Model Update** - Add `ProfileStatus` enum, `status` + `version` columns, `__mapper_args__` to `UserProfile`
-7. **Optimistic Locking** - Implement `ProfileLifecycleService.transition()` + `POST /tx-demo/user-profiles/{id}/transition` with 409/400 dual error paths and two-tab UI
+7. **Optimistic Locking** - Implement `ProfileLifecycleService.transition()` + `POST /user-profiles/{id}/transition` (real production endpoint in `app/routers/user_profiles.py`) with 409/400 dual error paths and admin UI at `GET /user-profiles/admin`
 
 ### Phase 3: Advanced (Patterns 5-7)
 **Goal:** Demonstrate production-grade patterns
@@ -361,18 +361,19 @@ def downgrade():
 
 ## 9. API Endpoints Summary
 
-All new endpoints go in `app/routers/transaction_demos.py` with prefix `/tx-demo`.
+Patterns 1–3, 5–7 live in `app/routers/transaction_demos.py` under `/tx-demo`. Pattern 4 is a real production endpoint in `app/routers/user_profiles.py`.
 
-| Endpoint | Pattern | Request Body | Response |
-|----------|---------|--------------|----------|
-| `POST /tx-demo/portfolios/with-holdings` | Cross-Table | `{name, holdings: [{asset_id, quantity}]}` | Portfolio with holdings |
-| `POST /tx-demo/portfolios/{id}/rebalance` | Unit of Work | `{prices: {asset_id: price}}` | Updated portfolio |
-| `POST /tx-demo/holdings/{id}/transfer` | Explicit Rollback | `{target_portfolio_id}` | Transferred holding |
-| `POST /tx-demo/user-profiles/{id}/transition` | Optimistic Lock | `{target, expected_version}` | Profile (200), 409 Conflict (stale), or 400 Bad Request (illegal transition) |
-| `POST /tx-demo/prices/bulk-import` | Savepoints | `{records: [{asset_id, price}]}` | Import result with batch status |
-| `GET /tx-demo/portfolios/{id}/valuation` | Pessimistic Lock | - | `{total_value, locked_at}` |
-| `GET /tx-demo/isolation/read-committed` | Isolation Level | - | Phantom read demo result |
-| `GET /tx-demo/isolation/serializable` | Isolation Level | - | Serializable demo result |
+| Endpoint | Pattern | Router | Request Body | Response |
+|----------|---------|--------|--------------|----------|
+| `POST /tx-demo/portfolios/with-holdings` | Cross-Table | `transaction_demos.py` | `{name, holdings: [{asset_id, quantity}]}` | Portfolio with holdings |
+| `POST /tx-demo/portfolios/{id}/rebalance` | Unit of Work | `transaction_demos.py` | `{prices: {asset_id: price}}` | Updated portfolio |
+| `POST /tx-demo/holdings/{id}/transfer` | Explicit Rollback | `transaction_demos.py` | `{target_portfolio_id}` | Transferred holding |
+| `POST /user-profiles/{id}/transition` | Optimistic Lock | `user_profiles.py` | `{target, expected_version}` | Profile (200), 409 Conflict (stale), or 400 Bad Request (illegal transition) |
+| `GET /user-profiles/admin` | Optimistic Lock UI | `user_profiles.py` | — | Admin HTML page |
+| `POST /tx-demo/prices/bulk-import` | Savepoints | `transaction_demos.py` | `{records: [{asset_id, price}]}` | Import result with batch status |
+| `GET /tx-demo/portfolios/{id}/valuation` | Pessimistic Lock | `transaction_demos.py` | — | `{total_value, locked_at}` |
+| `GET /tx-demo/isolation/read-committed` | Isolation Level | `transaction_demos.py` | — | Phantom read demo result |
+| `GET /tx-demo/isolation/serializable` | Isolation Level | `transaction_demos.py` | — | Serializable demo result |
 
 ### Response Schemas
 

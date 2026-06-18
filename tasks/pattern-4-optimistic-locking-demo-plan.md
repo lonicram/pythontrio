@@ -112,9 +112,9 @@ Opening move: show `update_user_profile`'s blind `setattr`, sketch a `status` fi
 
 ---
 
-## 4. How to enhance the app to demo this best
+## 4. How to enhance the app to build this
 
-Six focused additions, all relative to `python_trio/`. Each mirrors existing conventions.
+Six focused additions, all relative to `python_trio/`. Each mirrors existing conventions, and the feature ships exactly as any other production endpoint would — no demo prefixes, no feature flags, no timing hooks. The fact that it makes a great teaching subject is incidental to it being a correct, real feature.
 
 ### 4.1 Add a `status` state machine to `UserProfile`
 In `app/models/user_profile.py`, introduce an enum and a column. Four states, one of them terminal:
@@ -205,20 +205,22 @@ The per-transition side effects (`_run_side_effects`) are what make this more th
 Add an exception type alongside the parent plan's exception design (`app/exceptions/transaction.py`, `TransactionError` base), e.g. `IllegalTransitionError(TransactionError)` carrying `profile_id`, `current_status`, `requested_status`.
 
 ### 4.5 A conflict-aware endpoint
-`POST /tx-demo/user-profiles/{id}/transition` in `app/routers/transaction_demos.py` (prefix `/tx-demo`, registered in `app/main.py` per the parent plan). Request body: `{ "target": "verified"|"suspended"|"deleted", "expected_version": <int> }`. Behaviour:
+Add `POST /user-profiles/{id}/transition` to the existing `app/routers/user_profiles.py` (the router is already mounted under `prefix="/user-profiles"` in `app/main.py`). If the lifecycle surface grows enough to warrant its own module under SRP, split it into `app/routers/user_profile_transitions.py` (same `/user-profiles` prefix, registered in `app/main.py`); for now it sits beside the existing CRUD handlers. Request body: `{ "target": "verified"|"suspended"|"deleted", "expected_version": <int> }`. Behaviour:
 
 - Call `profile_lifecycle_service.transition(...)`, then `db.commit()`.
 - On `sqlalchemy.orm.exc.StaleDataError` → roll back, return **`409 Conflict`** with the current status/version in the body, a **`Retry-After: 1`** header, and a "reload and re-evaluate your action" message.
-- On `IllegalTransitionError` → **`400 Bad Request`** ("cannot transition `deleted` → `verified`"). This is a *different* failure from the concurrency conflict, and showing both — sometimes on the *same* button — teaches the distinction.
+- On `IllegalTransitionError` → **`400 Bad Request`** ("cannot transition `deleted` → `verified`"). This is a *different* failure from the concurrency conflict, and surfacing both — sometimes on the *same* button — teaches the distinction.
 - On success → return the profile with its **new** status and version.
 
-### 4.6 The minimal two-tab UI (the visual centerpiece)
-Serve one self-contained HTML page at `GET /tx-demo/ui` (vanilla JS, no framework). For a chosen profile it shows:
+The endpoint takes no timing, delay, or testing parameters; its only inputs are the target status and the client's `expected_version`, exactly as a real optimistic-lock-aware API requires.
+
+### 4.6 An admin management UI for profile lifecycle
+Serve a self-contained admin page at `GET /user-profiles/admin` (vanilla JS, no framework, no build step) — a legitimate operations tool for support/admin staff to inspect a profile's lifecycle and drive transitions. For a chosen profile it shows:
 
 - Email / username.
 - Current **status badge** (color-coded: new=grey, verified=green, suspended=amber, deleted=black) and a prominent **version badge** (e.g. `v3`).
 - Action buttons whose enablement reflects the *cached* state: **Verify**, **Suspend**, **Reinstate**, **Delete**.
-- A color-coded **status banner** and a small **event log**.
+- A color-coded **status banner** and a small **event log** of actions taken in this session.
 
 Flow the page implements:
 
@@ -228,15 +230,7 @@ Flow the page implements:
 4. On `409`: banner **red**, "Someone changed this profile while you were deciding — now `deleted` (vN)," plus a **Reload** button that re-fetches and refreshes the cached version.
 5. On `400`: banner **amber**, show the illegal-transition message ("cannot go `deleted → verified`").
 
-Open the page in two tabs → two independent admins. Color + version badge make the collision legible from the back row.
-
-### 4.7 A presenter-friendly way to guarantee the race
-Live races are timing-dependent; make the headline collision deterministic:
-
-- **Manual staleness (recommended):** simply don't reload Tab B. Tab A deletes (version 1→2); Tab B still holds `expected_version=1`; Tab B's verify → guaranteed `409`. No timing luck required.
-- **Optional `?delay_ms=` hook**, gated behind an `ENABLE_DEMO_ENDPOINTS` flag, to hold the transaction open and show a genuine overlap from `curl` for the deeper-dive crowd. Never reaches production.
-
-> Guardrail to say out loud: everything lives under `/tx-demo` behind a demo flag, per the parent plan's Section 7.
+Note that this is correct UX for an optimistic-lock-aware interface, not a demo shortcut: the UI intentionally caches `expected_version` locally and submits it unchanged until the admin explicitly reloads — that cached version *is* the compare-and-swap token, and holding it is precisely how the client lets the server detect that the row moved underneath it. Two admins opening the page on the same profile is the ordinary multi-operator case the optimistic lock exists to handle; because each tab holds its own cached `expected_version`, a stale tab's action deterministically surfaces a `409` without any artificial timing.
 
 ---
 
@@ -257,7 +251,7 @@ Live races are timing-dependent; make the headline collision deterministic:
 
 ## 6. Live demo run-sheet (the 10-minute core)
 
-**Pre-flight (off-screen):** `docker compose up -d`; `alembic upgrade head` (status + version columns present); seed a profile (e.g. `ada@example.com`) at **status `new`, version 1**. App running. Open `GET /tx-demo/ui?profile=<id>` in **two tabs** side by side; confirm both show `new`, `v1`. Font size up.
+**Pre-flight (off-screen):** `docker compose up -d`; `alembic upgrade head` (status + version columns present); seed a profile (e.g. `ada@example.com`) at **status `new`, version 1**. App running. Open `GET /user-profiles/admin?profile=<id>` in **two tabs** side by side; confirm both show `new`, `v1`. Font size up.
 
 **Act 1 — Baseline (≈2 min)**
 1. Both tabs show status `new` and the same version badge `v1`.
@@ -321,17 +315,16 @@ So the honest framing flips from defensive to offensive: **optimistic locking ea
 
 ## 10. Pre-demo checklist
 
-- [ ] Implement 4.1–4.6 (status enum + transition table, version column, migration, `profile_lifecycle_service`, `/tx-demo/user-profiles/{id}/transition`, two-tab UI).
+- [ ] Implement 4.1–4.6 (status enum + transition table, version column, migration, `profile_lifecycle_service`, `POST /user-profiles/{id}/transition`, admin UI at `GET /user-profiles/admin`).
 - [ ] `docker compose up -d`; `alembic upgrade head`; confirm `status` and `version` exist on `user_profiles`.
 - [ ] Seed two profiles: one at `new`/`v1` (collision demo), one at `verified`/`v1` (extensibility lap).
 - [ ] Enable SQL echo for the "under the hood" segment (demo engine only, off by default).
 - [ ] Verify the deterministic 409 path (Tab A delete → Tab B stale verify) and the 400 illegal-transition path (`deleted → verified`) end-to-end.
-- [ ] Confirm `/tx-demo` is behind the demo flag and absent from any prod profile.
 - [ ] Record a ~90s backup screencast of the four acts.
-- [ ] Add integration tests (matching `tests/integration` style) for: successful transition, 409-on-stale-version, 400-on-illegal-transition (incl. every `deleted → *`), and the multi-source delete (`new/verified/suspended → deleted`) — so the demo doubles as regression coverage.
+- [ ] Add integration tests (matching `tests/integration` style) for: successful transition, 409-on-stale-version, 400-on-illegal-transition (incl. every `deleted → *`), and the multi-source delete (`new/verified/suspended → deleted`) — so the feature ships with regression coverage.
 
 ---
 
 ## 11. Scope notes / out of scope
 
-Covers Pattern 4 only; pessimistic locking (Pattern 6) is the referenced contrast and a separate demo. The two-tab UI is intentionally throwaway-grade (single HTML file, no auth, no framework) to keep focus on the concurrency mechanism. The four-state machine (`new/verified/suspended/deleted`) is deliberately small but includes `suspended` specifically so the "future transitions" extensibility argument (Section 9) is demonstrable, not just asserted. The optional `?delay_ms=` hook (4.7) and the SQL-level walkthrough (Act 4) are the extension paths for a deeper-dive audience without lengthening the core demo.
+Covers Pattern 4 only; pessimistic locking (Pattern 6) is the referenced contrast and a separate demo. The admin UI is a real but intentionally minimal operations tool (single HTML file, no framework) to keep focus on the concurrency mechanism. The four-state machine (`new/verified/suspended/deleted`) is deliberately small but includes `suspended` specifically so the "future transitions" extensibility argument (Section 9) is demonstrable, not just asserted. The SQL-level walkthrough (Act 4) is the extension path for a deeper-dive audience without lengthening the core demo.
