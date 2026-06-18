@@ -83,13 +83,13 @@ This plan extends PythonTrio to demonstrate top database transaction patterns us
 
 ---
 
-### Pattern 4: Optimistic Locking (Concurrent Price Updates)
+### Pattern 4: Optimistic Locking (Concurrent Lifecycle Transitions)
 
-**What it demonstrates:** Optimistic locking uses a version column to detect concurrent modifications. When two transactions read the same row, the first to commit wins; the second detects the version mismatch and fails with a conflict error.
+**What it demonstrates:** Optimistic locking uses a version column to detect concurrent modifications to the same row. The pattern shines on **read-validate-write** operations — where the legality of a write depends on the current state — because last-write-wins is provably wrong in that case. Two concurrent `UserProfile` lifecycle transitions illustrate this: one admin deletes a profile while another verifies it. Without optimistic locking the delete is silently overwritten and a deleted account is resurrected into `verified` — an illegal state the transition table explicitly forbids.
 
-**Use case:** Add a `version` column to the Asset model with `__mapper_args__ = {"version_id_col": version}`. When two concurrent requests try to update Bitcoin's price, both read version=5. The first request updates and increments to version=6. The second request attempts to update with version=5, SQLAlchemy raises `StaleDataError`, and the endpoint returns HTTP 409 Conflict with retry guidance.
+**Use case:** Add a `status` state-machine column and a `version` column to `UserProfile`. The state machine has four states (`new`, `verified`, `suspended`, `deleted`) where `deleted` is terminal. The `ALLOWED_TRANSITIONS` dict encodes the legal moves; `__mapper_args__ = {"version_id_col": version}` enforces them concurrently. When two admins both read `status=new, version=1` and one deletes (bumping to `version=2`) before the other verifies, the verifier's `UPDATE … WHERE version=1` matches zero rows, SQLAlchemy raises `StaleDataError`, and the endpoint returns **HTTP 409 Conflict**. The client reloads, sees `status=deleted`, retries the verify, hits the transition-table check, and gets **HTTP 400 Bad Request** ("cannot transition `deleted → verified`"). The demo is driven by two browser tabs acting as two admins; the 409 is deterministic — just don't reload Tab B.
 
-**Why it matters:** Optimistic locking is the preferred concurrency strategy for high-read, low-write scenarios. It avoids database-level locks that block other transactions, instead detecting conflicts at commit time. This pattern is used extensively in web applications where concurrent edits are possible but rare.
+**Why it matters:** The 409-then-400 sequence teaches two distinct failure modes in one interaction: the version check defends data integrity (race); the re-evaluated state machine defends the business invariant (you cannot resurrect a deleted account). Optimistic locking is the preferred concurrency strategy for high-read/low-write scenarios because it avoids database-level locks on the happy path and scales across multiple app servers — the guarantee lives in the DB row, not app memory.
 
 ---
 
@@ -132,12 +132,13 @@ app/
 ├── services/                        # NEW DIRECTORY
 │   ├── __init__.py
 │   ├── portfolio_service.py         # Rebalancing, valuation, transfer logic
-│   └── bulk_import_service.py       # Savepoint-based batch operations
+│   ├── bulk_import_service.py       # Savepoint-based batch operations
+│   └── profile_lifecycle_service.py # Pattern 4: state-machine + optimistic locking
 ├── routers/
 │   └── transaction_demos.py         # NEW: All demo endpoints
 ├── exceptions/                      # NEW DIRECTORY
 │   ├── __init__.py
-│   └── transaction.py               # StaleDataConflict, PortfolioLimitExceeded
+│   └── transaction.py               # StaleDataConflict, IllegalTransitionError, PortfolioLimitExceeded
 └── schemas/
     └── transaction_schemas.py       # NEW: Request/response models for demos
 ```
@@ -146,7 +147,7 @@ app/
 
 | File | Change |
 |------|--------|
-| `app/models/asset.py` | Add `version` column + `__mapper_args__` |
+| `app/models/user_profile.py` | Add `ProfileStatus` enum, `status` column, `version` column + `__mapper_args__` |
 | `app/database.py` | Add transaction context helper (optional) |
 | `app/main.py` | Register new `transaction_demos` router |
 
@@ -181,6 +182,31 @@ class BulkImportService:
         """Pattern 3: Savepoints for partial failure recovery"""
 ```
 
+**profile_lifecycle_service.py** (Pattern 4 — mirrors `OnboardingService` "service builds, caller commits" style):
+```python
+ALLOWED_TRANSITIONS: dict[ProfileStatus, set[ProfileStatus]] = {
+    ProfileStatus.NEW:       {ProfileStatus.VERIFIED, ProfileStatus.DELETED},
+    ProfileStatus.VERIFIED:  {ProfileStatus.SUSPENDED, ProfileStatus.DELETED},
+    ProfileStatus.SUSPENDED: {ProfileStatus.VERIFIED, ProfileStatus.DELETED},
+    ProfileStatus.DELETED:   set(),    # terminal: no outbound transitions
+}
+
+class ProfileLifecycleService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def transition(self, profile_id: int, target: ProfileStatus) -> UserProfile:
+        profile = self.db.get(UserProfile, profile_id)
+        if profile is None:
+            raise ProfileNotFound(profile_id)
+        if target not in ALLOWED_TRANSITIONS[profile.status]:
+            raise IllegalTransitionError(profile_id, profile.status, target)
+        self._run_side_effects(profile, target)
+        profile.status = target
+        # caller commits; version_id_col enforces expected_version at flush
+        return profile
+```
+
 ### Exception Classes
 
 ```python
@@ -195,6 +221,13 @@ class StaleDataConflict(TransactionError):
         self.entity = entity
         self.entity_id = entity_id
         self.expected_version = expected_version
+
+class IllegalTransitionError(TransactionError):
+    """Raised when a requested lifecycle transition is not permitted by the state machine."""
+    def __init__(self, profile_id: int, current_status: ProfileStatus, requested_status: ProfileStatus):
+        self.profile_id = profile_id
+        self.current_status = current_status
+        self.requested_status = requested_status
 
 class PortfolioLimitExceeded(TransactionError):
     """Raised when portfolio would exceed maximum holdings."""
@@ -211,33 +244,43 @@ class TransferValidationError(TransactionError):
 
 ## 5. Model Changes Required
 
-### Asset Model Update (`app/models/asset.py`)
+### UserProfile Model Update (`app/models/user_profile.py`)
 
-Add version column and mapper configuration for optimistic locking:
+Add a `ProfileStatus` enum, a `status` state-machine column, and a `version` column for optimistic locking:
 
 ```python
-# Add to imports
-from sqlalchemy.orm import Mapped, mapped_column
+import enum
+from sqlalchemy import Enum as SAEnum, Integer
 
-# Add to Asset class fields (after updated_at)
+class ProfileStatus(str, enum.Enum):
+    NEW = "new"
+    VERIFIED = "verified"
+    SUSPENDED = "suspended"
+    DELETED = "deleted"          # terminal — no outbound transitions
+
+# Add to UserProfile class fields (after existing columns)
+status: Mapped[ProfileStatus] = mapped_column(
+    SAEnum(ProfileStatus, name="profile_status"),
+    nullable=False,
+    default=ProfileStatus.NEW,
+    server_default=ProfileStatus.NEW.value,
+)
 version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
 # Add mapper args for SQLAlchemy optimistic locking
-__mapper_args__ = {
-    "version_id_col": version
-}
+__mapper_args__ = {"version_id_col": version}
 ```
 
-**How it works:** SQLAlchemy automatically increments `version` on every UPDATE and includes `WHERE version = :expected` in the UPDATE statement. If no rows match (concurrent modification), `StaleDataError` is raised.
+**How it works:** SQLAlchemy automatically increments `version` on every UPDATE and includes `WHERE version = :expected` in the UPDATE statement. If zero rows match (concurrent modification), `StaleDataError` is raised. The `__mapper_args__` line covers every write path — including plain profile edits — without any hand-written version checks.
 
 ---
 
 ## 6. Database Migration Required
 
-**Migration file:** `alembic/versions/xxx_add_asset_version_column.py`
+**Migration file:** `alembic/versions/xxx_add_user_profile_status_and_version.py`
 
 ```python
-"""Add version column to assets for optimistic locking
+"""Add status and version columns to user_profiles for optimistic locking
 
 Revision ID: xxx
 """
@@ -245,16 +288,23 @@ from alembic import op
 import sqlalchemy as sa
 
 def upgrade():
-    op.add_column(
-        'assets',
-        sa.Column('version', sa.Integer(), nullable=False, server_default='1')
+    profile_status = sa.Enum(
+        'new', 'verified', 'suspended', 'deleted',
+        name='profile_status'
     )
+    profile_status.create(op.get_bind(), checkfirst=True)
+    op.add_column('user_profiles',
+        sa.Column('status', profile_status, nullable=False, server_default='new'))
+    op.add_column('user_profiles',
+        sa.Column('version', sa.Integer(), nullable=False, server_default='1'))
 
 def downgrade():
-    op.drop_column('assets', 'version')
+    op.drop_column('user_profiles', 'version')
+    op.drop_column('user_profiles', 'status')
+    sa.Enum(name='profile_status').drop(op.get_bind(), checkfirst=True)
 ```
 
-**Run with:** `alembic revision --autogenerate -m "Add asset version column"` then `alembic upgrade head`
+**Run with:** `alembic revision --autogenerate -m "Add user profile status and version"` then `alembic upgrade head`
 
 ---
 
@@ -263,7 +313,7 @@ def downgrade():
 | Concern | Mitigation |
 |---------|------------|
 | **PostgreSQL-specific features** | Patterns 6 & 7 require PostgreSQL. Add config check and skip/warn on SQLite. |
-| **Demo delays blocking production** | Use `/demo/` prefix; add `ENABLE_DEMO_ENDPOINTS` config flag (default: true in dev) |
+| **Demo delays blocking production** | All endpoints live under `/tx-demo`; `ENABLE_DEMO_ENDPOINTS` config flag (default: true in dev, off in prod). The optional `?delay_ms=` hook on the transition endpoint (for showing genuine concurrent overlap in a terminal) must only be active when this flag is set. |
 | **Deadlocks with pessimistic locking** | Always lock in consistent order (by asset_id ASC); set lock timeout |
 | **Optimistic lock retries** | Return `Retry-After: 1` header on 409; document exponential backoff |
 | **Isolation level overhead** | SERIALIZABLE for demo only; document 10-30% performance cost |
@@ -276,7 +326,7 @@ def downgrade():
 | Cross-Table Consistency | ✅ | ✅ | Standard ACID |
 | Unit of Work | ✅ | ✅ | SQLAlchemy Session |
 | Savepoints | ✅ | ✅ | `begin_nested()` works on both |
-| Optimistic Locking | ✅ | ✅ | SQLAlchemy `version_id_col` |
+| Optimistic Locking | ✅ | ✅ | SQLAlchemy `version_id_col`; 409 vs 400 distinction requires PostgreSQL for reliable concurrent test |
 | Explicit Rollback | ✅ | ✅ | Standard rollback |
 | Pessimistic Locking | ⚠️ | ✅ | SQLite has limited support |
 | Isolation Levels | ❌ | ✅ | Requires PostgreSQL |
@@ -296,9 +346,9 @@ def downgrade():
 ### Phase 2: Concurrency (Pattern 4)
 **Goal:** Add optimistic locking support
 
-5. **Migration** - Add `version` column to assets table
-6. **Model Update** - Add `__mapper_args__` to Asset model
-7. **Optimistic Locking** - Add concurrent-safe price update endpoint
+5. **Migration** - Add `status` enum + `version` columns to `user_profiles` table
+6. **Model Update** - Add `ProfileStatus` enum, `status` + `version` columns, `__mapper_args__` to `UserProfile`
+7. **Optimistic Locking** - Implement `ProfileLifecycleService.transition()` + `POST /tx-demo/user-profiles/{id}/transition` with 409/400 dual error paths and two-tab UI
 
 ### Phase 3: Advanced (Patterns 5-7)
 **Goal:** Demonstrate production-grade patterns
@@ -318,7 +368,7 @@ All new endpoints go in `app/routers/transaction_demos.py` with prefix `/tx-demo
 | `POST /tx-demo/portfolios/with-holdings` | Cross-Table | `{name, holdings: [{asset_id, quantity}]}` | Portfolio with holdings |
 | `POST /tx-demo/portfolios/{id}/rebalance` | Unit of Work | `{prices: {asset_id: price}}` | Updated portfolio |
 | `POST /tx-demo/holdings/{id}/transfer` | Explicit Rollback | `{target_portfolio_id}` | Transferred holding |
-| `PUT /tx-demo/assets/{id}/price` | Optimistic Lock | `{price, expected_version}` | Asset or 409 Conflict |
+| `POST /tx-demo/user-profiles/{id}/transition` | Optimistic Lock | `{target, expected_version}` | Profile (200), 409 Conflict (stale), or 400 Bad Request (illegal transition) |
 | `POST /tx-demo/prices/bulk-import` | Savepoints | `{records: [{asset_id, price}]}` | Import result with batch status |
 | `GET /tx-demo/portfolios/{id}/valuation` | Pessimistic Lock | - | `{total_value, locked_at}` |
 | `GET /tx-demo/isolation/read-committed` | Isolation Level | - | Phantom read demo result |
