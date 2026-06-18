@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
+from app.models.user_profile import ProfileStatus
+
 
 class AssetResponse(BaseModel):
     """Asset response schema."""
@@ -61,6 +63,7 @@ class UserProfileResponse(BaseModel):
     username: str | None
     full_name: str | None
     is_active: bool
+    status: ProfileStatus
     created_at: datetime
     updated_at: datetime | None
 

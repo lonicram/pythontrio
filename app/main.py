@@ -1,6 +1,10 @@
 """FastAPI application entry point."""
 
+import os
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.mcp_server import mcp
@@ -27,8 +31,18 @@ app.include_router(holdings.router)
 app.include_router(asset_prices.router)
 app.include_router(onboarding.router)
 
+# Static files (admin UI assets)
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
 # MCP endpoint (Streamable HTTP)
 app.mount("/mcp", mcp_app)
+
+
+@app.get("/admin", response_class=FileResponse, include_in_schema=False)
+def admin_ui() -> FileResponse:
+    """Serve the admin console UI."""
+    return FileResponse(os.path.join(_static_dir, "admin.html"), media_type="text/html")
 
 
 @app.get("/")

@@ -1,12 +1,16 @@
 """UserProfile API routes for CRUD operations."""
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user_profile import UserProfile
+from app.exceptions import IllegalTransitionError, ProfileNotFound
+from app.models.user_profile import ProfileStatus, UserProfile
 from app.schemas import UserProfileResponse
+from app.services.profile_lifecycle_service import ProfileLifecycleService
 
 router = APIRouter(prefix="/user-profiles", tags=["user-profiles"])
 
@@ -29,6 +33,36 @@ class UserProfileUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class ProfileTransitionRequest(BaseModel):
+    """Request body for a lifecycle transition.
+
+    Note:
+        No expected_version field — see the optimistic-locking plan for that addition.
+    """
+
+    target: ProfileStatus
+
+
+@router.post("/{user_id}/transition", response_model=UserProfileResponse)
+def transition_user_profile(
+    user_id: int,
+    data: ProfileTransitionRequest,
+    db: Session = Depends(get_db),
+) -> UserProfile:
+    """Transition a user profile to a new lifecycle status."""
+    service = ProfileLifecycleService(db)
+    try:
+        profile = service.transition(user_id, data.target)
+    except ProfileNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except IllegalTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    time.sleep(1)  # sleep for 1 second for demo purposes
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
 @router.get("/", response_model=list[UserProfileResponse])
 def list_user_profiles(db: Session = Depends(get_db)) -> list[UserProfile]:
     """List all user profiles."""
@@ -36,9 +70,7 @@ def list_user_profiles(db: Session = Depends(get_db)) -> list[UserProfile]:
 
 
 @router.get("/{user_id}", response_model=UserProfileResponse)
-def get_user_profile(
-    user_id: int, db: Session = Depends(get_db)
-) -> UserProfile:
+def get_user_profile(user_id: int, db: Session = Depends(get_db)) -> UserProfile:
     """Get a user profile by ID."""
     user_profile = db.query(UserProfile).filter(UserProfile.id == user_id).first()
     if not user_profile:
@@ -52,17 +84,17 @@ def create_user_profile(
 ) -> UserProfile:
     """Create a new user profile."""
     # Check for duplicate email
-    existing_email = db.query(UserProfile).filter(
-        UserProfile.email == data.email
-    ).first()
+    existing_email = (
+        db.query(UserProfile).filter(UserProfile.email == data.email).first()
+    )
     if existing_email:
         raise HTTPException(status_code=409, detail="Email already exists")
 
     # Check for duplicate username if provided
     if data.username:
-        existing_username = db.query(UserProfile).filter(
-            UserProfile.username == data.username
-        ).first()
+        existing_username = (
+            db.query(UserProfile).filter(UserProfile.username == data.username).first()
+        )
         if existing_username:
             raise HTTPException(status_code=409, detail="Username already exists")
 
@@ -84,17 +116,17 @@ def update_user_profile(
 
     # Check for duplicate email if being changed
     if data.email and data.email != user_profile.email:
-        existing_email = db.query(UserProfile).filter(
-            UserProfile.email == data.email
-        ).first()
+        existing_email = (
+            db.query(UserProfile).filter(UserProfile.email == data.email).first()
+        )
         if existing_email:
             raise HTTPException(status_code=409, detail="Email already exists")
 
     # Check for duplicate username if being changed
     if data.username and data.username != user_profile.username:
-        existing_username = db.query(UserProfile).filter(
-            UserProfile.username == data.username
-        ).first()
+        existing_username = (
+            db.query(UserProfile).filter(UserProfile.username == data.username).first()
+        )
         if existing_username:
             raise HTTPException(status_code=409, detail="Username already exists")
 

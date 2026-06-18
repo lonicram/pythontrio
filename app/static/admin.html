@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Console</title>
+  <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-logo">Admin</div>
+      <ul class="sidebar-nav">
+        <li class="nav-item active" id="navUsers" onclick="showUsers()">Users</li>
+      </ul>
+    </nav>
+    <main class="content">
+      <section id="usersView">
+        <div class="content-header">
+          <h2>Users</h2>
+          <span id="userCount" class="count-badge"></span>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-id">ID</th>
+              <th class="col-email">Email</th>
+              <th class="col-username">Username</th>
+              <th class="col-status">Status</th>
+              <th class="col-action"></th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </section>
+      <section id="detailView" class="hidden">
+        <div class="content-header">
+          <a href="#" class="back-link" onclick="showUsers(); return false;">&#8592; Back to Users</a>
+        </div>
+        <div class="detail-panel">
+          <div class="state-display">
+            <span id="stateIndicator"></span>
+          </div>
+          <div class="profile-meta">
+            <div class="meta-row">
+              <span class="meta-label">Email</span>
+              <span id="dEmail" class="mono"></span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Username</span>
+              <span id="dUsername" class="mono"></span>
+            </div>
+          </div>
+          <div class="transitions-section">
+            <div class="transitions-label">Transitions</div>
+            <button id="btnVerify"    class="action-btn btn-verify"    onclick="doTransition('verified')">Verify <span class="arrow">&#8594;</span></button>
+            <button id="btnSuspend"   class="action-btn btn-suspend"   onclick="doTransition('suspended')">Suspend <span class="arrow">&#8594;</span></button>
+            <button id="btnReinstate" class="action-btn btn-reinstate" onclick="doTransition('verified')">Reinstate <span class="arrow">&#8594;</span></button>
+            <button id="btnDelete"    class="action-btn btn-delete"    onclick="doTransition('deleted')">Delete <span class="arrow">&#8594;</span></button>
+          </div>
+          <div id="errorBanner" class="error-banner hidden"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/admin.js"></script>
+</body>
+</html>

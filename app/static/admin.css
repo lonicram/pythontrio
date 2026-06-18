@@ -1,0 +1,355 @@
+/* -----------------------------------------------
+   Reset & base
+----------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #0F172A;
+  background: #F8FAFC;
+}
+
+/* -----------------------------------------------
+   Layout
+----------------------------------------------- */
+.layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* -----------------------------------------------
+   Sidebar
+----------------------------------------------- */
+.sidebar {
+  width: 220px;
+  background: #0F172A;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  padding: 1.25rem 1.25rem 1rem;
+  color: #E2E8F0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  user-select: none;
+}
+
+.sidebar-nav {
+  list-style: none;
+  padding: 0.75rem 0;
+}
+
+.nav-item {
+  padding: 0.6rem 1.25rem;
+  color: #64748B;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+  color: #CBD5E1;
+}
+
+.nav-item.active {
+  color: #E2E8F0;
+  border-left: 3px solid #6366F1;
+}
+
+/* -----------------------------------------------
+   Content area
+----------------------------------------------- */
+.content {
+  flex: 1;
+  background: #F8FAFC;
+  overflow-y: auto;
+}
+
+/* -----------------------------------------------
+   Content header
+----------------------------------------------- */
+.content-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #E2E8F0;
+  background: #fff;
+}
+
+.content-header h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.count-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  background: #F1F5F9;
+  color: #64748B;
+  border: 1px solid #E2E8F0;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+}
+
+.back-link {
+  color: #6366F1;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* -----------------------------------------------
+   Data table
+----------------------------------------------- */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.data-table th {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-variant: small-caps;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748B;
+  text-align: left;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 2px solid #E2E8F0;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #E2E8F0;
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover td {
+  background: #EFF6FF;
+}
+
+/* Column alignment */
+.col-id,
+.data-table td:first-child {
+  text-align: right;
+  width: 60px;
+}
+
+.col-action,
+.data-table td:last-child {
+  text-align: right;
+  width: 80px;
+}
+
+/* -----------------------------------------------
+   Typography utilities
+----------------------------------------------- */
+.mono {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.muted {
+  color: #94A3B8;
+}
+
+/* -----------------------------------------------
+   Manage link
+----------------------------------------------- */
+.manage-link {
+  color: #6366F1;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.manage-link:hover {
+  text-decoration: underline;
+}
+
+/* -----------------------------------------------
+   Status badges
+----------------------------------------------- */
+.badge {
+  display: inline-block;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.badge-new {
+  background: #6B7280;
+  color: #fff;
+}
+
+.badge-verified {
+  background: #16A34A;
+  color: #fff;
+}
+
+.badge-suspended {
+  background: #D97706;
+  color: #fff;
+}
+
+.badge-deleted {
+  background: #111827;
+  color: #fff;
+}
+
+/* -----------------------------------------------
+   Detail panel
+----------------------------------------------- */
+.detail-panel {
+  max-width: 520px;
+  margin: 2rem;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+/* State indicator */
+.state-display {
+  margin-bottom: 1.5rem;
+}
+
+#stateIndicator {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.75rem;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.state-new       { color: #6B7280; }
+.state-verified  { color: #16A34A; }
+.state-suspended { color: #D97706; }
+.state-deleted   { color: #111827; }
+
+/* Profile meta */
+.profile-meta {
+  margin-bottom: 1.75rem;
+}
+
+.meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.meta-row:last-child {
+  border-bottom: none;
+}
+
+.meta-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-variant: small-caps;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748B;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+/* Transitions section */
+.transitions-section {
+  margin-bottom: 1rem;
+}
+
+.transitions-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #94A3B8;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.action-btn {
+  width: 100%;
+  height: 40px;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+  margin-bottom: 0.5rem;
+  transition: opacity 0.15s;
+}
+
+.action-btn:last-child {
+  margin-bottom: 0;
+}
+
+.action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.action-btn:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.arrow {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.btn-verify    { background: #16A34A; }
+.btn-suspend   { background: #D97706; }
+.btn-reinstate { background: #0284C7; }
+.btn-delete    { background: #DC2626; }
+
+/* -----------------------------------------------
+   Error banner
+----------------------------------------------- */
+.error-banner {
+  border-left: 4px solid #D97706;
+  background: #FEFCE8;
+  color: #92400E;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0 4px 4px 0;
+  margin-top: 1rem;
+}
+
+/* -----------------------------------------------
+   Utility
+----------------------------------------------- */
+.hidden {
+  display: none !important;
+}
