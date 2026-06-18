@@ -30,7 +30,7 @@ async function loadUsers() {
   try {
     const res = await fetch('/user-profiles/');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const profiles = await res.json();
+    const profiles = (await res.json()).sort((a, b) => a.id - b.id);
 
     const countEl = document.getElementById('userCount');
     countEl.textContent = profiles.length;
