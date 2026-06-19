@@ -18,7 +18,7 @@ class ProfileStatus(str, enum.Enum):
     """Lifecycle status for a user profile."""
 
     NEW = "new"
-    VERIFIED = "verified"
+    VERIFIED = "verified"  # karat passed
     SUSPENDED = "suspended"
     DELETED = "deleted"
 
